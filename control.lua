@@ -14,36 +14,6 @@
 local NETWORK_SIGNAL_ID = {type = "virtual", name = "stl-network-id"}
 local PRIORITY_SIGNAL_ID = {type = "virtual", name = "stl-priority"}
 
--- returns a mapping of the signals
-local function getCombinedSignalValues(entity) --(B-1)
-  local signals = {}
-
-  local redSignals = {}
-  local greenSignals = {}
-  if entity.get_circuit_network(defines.wire_type.red) 
-  then
-    redSignals = entity.get_circuit_network(defines.wire_type.red).signals
-  end
-  if entity.get_circuit_network(defines.wire_type.green)
-  then
-    greenSignals = entity.get_circuit_network(defines.wire_type.green).signals
-  end
-
-  for _,v in pairs(redSignals)
-  do
-    signals[v.signal.name] = v.count
-  end
-  for _,v in pairs(greenSignals)
-  do
-    if signals[v.signal.name] and signals[v.signal.name] ~= 0 
-    then signals[v.signal.name] = signals[v.signal.name] + v.count
-    else signals[v.signal.name] = v.count
-    end
-  end
-
-  return signals
-end
-
 -- changes the next schedule and sends the train to the target station
 -- appends schedule if the current is last.
 -- wait condition will be set to empty if train has cargo, filled if cargo is empty
