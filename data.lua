@@ -11,7 +11,7 @@ data:extend({
         type = "item-subgroup",
         name = "STL-signal",
         group = "signals",
-        order = "f",
+        order = "f-b-b-b",
     },
     {
         type = "virtual-signal",

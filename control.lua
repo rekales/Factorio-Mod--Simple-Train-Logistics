@@ -4,15 +4,15 @@
 --TODO: find a way so theres no need to do (A-2). Maybe find all id signals involved.
 --TODO: iterate all trainstops to get all signals involved to avoid having to do (A-3)
 --TODO: find shortest requester-provider pair
---TODO: check if train can path (add option to disable)
 --TODO: priority
---TODO: ignore signals coming out of the train (stopped train, train count)
 --TODO: multi-surface support
 --TODO: multi-force support
---TODO: no path warning opt-out setting for better performance
 
 local NETWORK_SIGNAL_ID = {type = "virtual", name = "stl-network-id"}
 local PRIORITY_SIGNAL_ID = {type = "virtual", name = "stl-priority"}
+
+local STATION_BLOCKED_SIGNAL_NAMES = {["stl-network-id"] = true, ["stl-priority"] = true}
+
 
 -- changes the next schedule and sends the train to the target station
 -- appends schedule if the current is last.
@@ -33,12 +33,10 @@ local function sendTrainToStation(train, station)
 end
 
 
-local function canPath(train, station)
-
-end
-
-script.on_event(defines.events.on_player_ammo_inventory_changed,
-  function(event)
+local function on_player_ammo_inventory_changed(event)
+  local surfaces = game.surfaces
+  for _, surface in pairs(surfaces)
+  do
     game.print("event: changed ammo")
     local trainStops = game.get_train_stops()
     local logNets = {}
@@ -50,6 +48,7 @@ script.on_event(defines.events.on_player_ammo_inventory_changed,
     do
       local signals = station.get_merged_signals()
       local netId = station.get_merged_signal(NETWORK_SIGNAL_ID)
+      local stationControlBehavior = station.get_control_behavior()
 
       if netId ~= 0 and not station.get_control_behavior().disabled and station.connected_rail --(A-1)
       then
@@ -60,17 +59,14 @@ script.on_event(defines.events.on_player_ammo_inventory_changed,
           logNets[netId]["req"] = {}
         end
 
-        -- game.print(station.backer_name .. " : " .. serpent.line(signals))
-
         for _,signal in pairs(signals)
         do
-
           local sigName = signal.signal.name
-
-          if not (sigName == "stl-network-id" or sigName == "stl-priority")
+          if not (STATION_BLOCKED_SIGNAL_NAMES[sigName] 
+              or (stationControlBehavior.read_trains_count and sigName == stationControlBehavior.trains_count_signal.name)
+              or (stationControlBehavior.read_stopped_train and sigName == stationControlBehavior.stopped_train_signal.name)
+              or (stationControlBehavior.set_trains_limit and sigName == stationControlBehavior.trains_limit_signal.name))
           then 
-
-            game.print(station.backer_name .. " : " .. serpent.line(signal))
 
             if logNets[netId]["prov"][sigName] == nil --(A-3)
             then 
@@ -78,17 +74,15 @@ script.on_event(defines.events.on_player_ammo_inventory_changed,
               logNets[netId]["req"][sigName] = {}
             end
 
-            
-
             if signal.count > 0 and station.get_stopped_train()
             then
-              game.print("new provider: " .. station.backer_name)
+              -- game.print("new provider: " .. station.backer_name)
               
               table.insert(logNets[netId]["prov"][sigName], station)
 
             elseif signal.count < 0 and station.trains_limit-station.trains_count > 0
             then
-              game.print("new requester: " .. station.backer_name)
+              -- game.print("new requester: " .. station.backer_name)
               table.insert(logNets[netId]["req"][sigName], station)
             end
           end
@@ -117,50 +111,52 @@ script.on_event(defines.events.on_player_ammo_inventory_changed,
         end
       end
     end
+  end
+end
 
 
-  end)
+local function on_built_entity(event)
+  game.print("event: built entity")
+  -- local trains = game.get_surface("nauvis").get_trains()
+
+  -- local schedule= {}
+  -- for k,v in pairs(trains)
+  -- do
+  --   game.print(v.id)
+  --   schedule = v.schedule
+  --   game.print(serpent.line(schedule))
+  --   break
+  -- end
 
 
-script.on_event(defines.events.on_built_entity,
-  function(event)
-  
-    game.print("event: built entity")
-    -- local trains = game.get_surface("nauvis").get_trains()
+  -- local inv = {}
+  -- for k,v in pairs(trains)
+  -- do
+  --   game.print(v.id)
+  --   inv = v.get_contents()
+  --   break
+  -- end
 
-    -- local schedule= {}
-    -- for k,v in pairs(trains)
-    -- do
-    --   game.print(v.id)
-    --   schedule = v.schedule
-    --   game.print(serpent.line(schedule))
-    --   break
-    -- end
+  -- game.print(#inv)
 
-
-    -- local inv = {}
-    -- for k,v in pairs(trains)
-    -- do
-    --   game.print(v.id)
-    --   inv = v.get_contents()
-    --   break
-    -- end
-
-    -- game.print(#inv)
-
-    -- for k,v in pairs(inv)
-    -- do
-    --   game.print(k .. ":" .. v)
-    -- end
+  -- for k,v in pairs(inv)
+  -- do
+  --   game.print(k .. ":" .. v)
+  -- end
 
 
-    local stations = game.get_train_stops()
-    for k,station in pairs(stations)
-    do
-      local signalID = {type = "virtual", name = "stl-priority"}
-      game.print(station.backer_name)
-      game.print(station.get_merged_signal(signalID))
-      break
-    end
+  local stations = game.get_train_stops()
+  for k,station in pairs(stations)
+  do
+    local signalID = {type = "virtual", name = "stl-priority"}
+    game.print(station.backer_name)
+    game.print(station.get_merged_signal(signalID))
+    game.print(serpent.line(station.get_control_behavior().trains_count_signal))
+    game.print(serpent.line(station.get_control_behavior().stopped_train_signal))
+    break
+  end
+end
 
-  end)
+
+script.on_event(defines.events.on_player_ammo_inventory_changed, on_player_ammo_inventory_changed)
+script.on_event(defines.events.on_built_entity, on_built_entity)
