@@ -11,8 +11,11 @@
 --TODO: multi-force support
 --TODO: no path warning opt-out setting for better performance
 
+local NETWORK_SIGNAL_ID = {type = "virtual", name = "stl-network-id"}
+local PRIORITY_SIGNAL_ID = {type = "virtual", name = "stl-priority"}
+
 -- returns a mapping of the signals
-local function getCombinedSignalValues(entity)
+local function getCombinedSignalValues(entity) --(B-1)
   local signals = {}
 
   local redSignals = {}
@@ -75,13 +78,10 @@ script.on_event(defines.events.on_player_ammo_inventory_changed,
 
     for _,station in pairs (trainStops)
     do
-      local signals = getCombinedSignalValues(station)
-      local netId = signals["stl-network-id"]
+      local signals = station.get_merged_signals()
+      local netId = station.get_merged_signal(NETWORK_SIGNAL_ID)
 
-      -- game.print(station.backer_name)
-      -- game.print(temp(signals))
-
-      if netId and netId ~= 0 and not station.get_control_behavior().disabled and station.connected_rail --(A-1)
+      if netId ~= 0 and not station.get_control_behavior().disabled and station.connected_rail --(A-1)
       then
         if logNets[netId] == nil --(A-2)
         then 
@@ -90,32 +90,38 @@ script.on_event(defines.events.on_player_ammo_inventory_changed,
           logNets[netId]["req"] = {}
         end
 
-        signals["stl-priority"] = nil
-        signals["stl-network-id"] = nil
+        -- game.print(station.backer_name .. " : " .. serpent.line(signals))
 
-        
-        for sigName,sigCount in pairs(signals)
+        for _,signal in pairs(signals)
         do
-          if logNets[netId]["prov"][sigName] == nil --(A-3)
+
+          local sigName = signal.signal.name
+
+          if not (sigName == "stl-network-id" or sigName == "stl-priority")
           then 
-            logNets[netId]["prov"][sigName] = {}
-            logNets[netId]["req"][sigName] = {}
-          end
 
-          
+            game.print(station.backer_name .. " : " .. serpent.line(signal))
 
-          if sigCount > 0 and station.get_stopped_train()
-          then
-            -- game.print("new provider: " .. station.backer_name)
+            if logNets[netId]["prov"][sigName] == nil --(A-3)
+            then 
+              logNets[netId]["prov"][sigName] = {}
+              logNets[netId]["req"][sigName] = {}
+            end
+
             
-            table.insert(logNets[netId]["prov"][sigName], station)
 
-          elseif sigCount < 0 and station.trains_limit-station.trains_count > 0
-          then
-            -- game.print("new requester: " .. station.backer_name)
-            table.insert(logNets[netId]["req"][sigName], station)
+            if signal.count > 0 and station.get_stopped_train()
+            then
+              game.print("new provider: " .. station.backer_name)
+              
+              table.insert(logNets[netId]["prov"][sigName], station)
+
+            elseif signal.count < 0 and station.trains_limit-station.trains_count > 0
+            then
+              game.print("new requester: " .. station.backer_name)
+              table.insert(logNets[netId]["req"][sigName], station)
+            end
           end
-
 
         end
       end
