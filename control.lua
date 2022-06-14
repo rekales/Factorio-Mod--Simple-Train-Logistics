@@ -6,11 +6,30 @@
 --TODO: find shortest requester-provider pair
 --TODO: priority
 --TODO: don't send trains when station is at full limit. Caused by trains pathing to temporary stops
+--TODO: Reset Schedule Signal
+--TODO: Cancel Provide Signal
+--TODO: Cancel Request Signal
+--TODO: Wait for Wait Condition Signal
+--TODO: Alert For Movement Signal
 
 local NETWORK_SIGNAL_ID = {type = "virtual", name = "stl-network-id"}
 local PRIORITY_SIGNAL_ID = {type = "virtual", name = "stl-priority"}
+local RESET_SCHEDULE_SIGNAL_ID = {type = "virtual", name = "stl-reset-schedule"}
+local WAIT_FOR_CONDITION_SIGNAL_ID = {type = "virtual", name = "stl-wait-for-condition"}
+local ALERT_FOR_MOVEMENT_SIGNAL_ID = {type = "virtual", name = "stl-alert-for-movement"}
+local CANCEL_PROVIDE_SIGNAL_ID = {type = "virtual", name = "stl-cancel-provide"}
+local CANCEL_REQUEST_SIGNAL_ID = {type = "virtual", name = "stl-cancel-request"}
 
-local STATION_BLOCKED_SIGNAL_NAMES = {["stl-network-id"] = true, ["stl-priority"] = true}
+local STATION_BLOCKED_SIGNAL_NAMES = 
+{
+  ["stl-network-id"] = true,
+  ["stl-priority"] = true,
+  ["stl-reset-schedule"] = true,
+  ["stl-wait-for-condition"] = true,
+  ["stl-alert-for-movement"] = true,
+  ["stl-cancel-provide"] = true,
+  ["stl-cancel-request"] = true,
+}
 
 
 -- changes the next schedule and sends the train to the target station

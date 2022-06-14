@@ -1,11 +1,5 @@
 --data.lua
 
---TODO: Reset Schedule Signal
---TODO: Cancel Provide Signal
---TODO: Cancel Request Signal
---TODO: Wait for Wait Condition Signal
---TODO: Alert For Movement Signal
-
 data:extend({
     {
         type = "item-subgroup",
