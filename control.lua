@@ -5,12 +5,12 @@
 --TODO: iterate all trainstops to get all signals involved to avoid having to do (A-3)
 --TODO: find shortest requester-provider pair
 --TODO: priority
---TODO: don't send trains when station is at full limit. Caused by trains pathing to temporary stops
 --TODO: Reset Schedule Signal
 --TODO: Cancel Provide Signal
 --TODO: Cancel Request Signal
 --TODO: Wait for Wait Condition Signal
 --TODO: Alert For Movement Signal
+--TODO: Optimize (A-5)
 
 local NETWORK_SIGNAL_ID = {type = "virtual", name = "stl-network-id"}
 local PRIORITY_SIGNAL_ID = {type = "virtual", name = "stl-priority"}
@@ -57,20 +57,22 @@ local function on_player_ammo_inventory_changed(event)
   for _, force in pairs(forces)
   do
     local surfaces = game.surfaces
-    for surfaceIndex, _ in pairs(surfaces)
+    for _, surface in pairs(surfaces)
     do
       game.print("event: changed ammo")
-      local trainStops = force.get_train_stops({surface = surfaceIndex})
+      local trainStops = force.get_train_stops({surface = surface})
       local logNets = {}
       local highestPrio = 0
       local lowestPrio = 0
       local currentPrio = 0
+      local signals
+      local stationControlBehavior
 
       for _,station in pairs (trainStops)
       do
-        local signals = station.get_merged_signals()
+        
         local netId = station.get_merged_signal(NETWORK_SIGNAL_ID)
-        local stationControlBehavior = station.get_control_behavior()
+        
 
         if netId ~= 0 and not station.get_control_behavior().disabled and station.connected_rail --(A-1)
         then
@@ -80,6 +82,9 @@ local function on_player_ammo_inventory_changed(event)
             logNets[netId]["prov"] = {}
             logNets[netId]["req"] = {}
           end
+          signals = station.get_merged_signals()
+          stationControlBehavior = station.get_control_behavior()
+
 
           for _,signal in pairs(signals)
           do
@@ -104,12 +109,23 @@ local function on_player_ammo_inventory_changed(event)
 
               elseif signal.count < 0 and station.trains_limit-station.trains_count > 0
               then
-                game.print(station.trains_limit)
-                game.print(station.trains_count)
-                game.print(station.trains_limit-station.trains_count)
+                local trains = station.get_train_stop_trains() --(A-5)
+                local occupied = false
+                for _,train in pairs(trains)
+                do
+                  if train.schedule.records[train.schedule.current].temporary and train.schedule.records[train.schedule.current].rail == station.connected_rail
+                  then
+                    occupied = true
+                    break
+                  end
+                end
                 
-                -- game.print("new requester: " .. station.backer_name)
-                table.insert(logNets[netId]["req"][sigName], station)
+                if not occupied
+                then
+                  table.insert(logNets[netId]["req"][sigName], station)
+                  -- game.print("new requester: " .. station.backer_name)
+                end
+
               end
             end
 
@@ -126,7 +142,7 @@ local function on_player_ammo_inventory_changed(event)
           do
             for iProv, provider in pairs(network["prov"][signal])
             do
-              game.print(provider.backer_name .. " -> " .. requester.backer_name)
+              game.print(signal .. ": " ..provider.backer_name .. " -> " .. requester.backer_name)
 
               sendTrainToStation(provider.get_stopped_train(), requester)
               table.remove(network["prov"][signal], iProv)
@@ -179,10 +195,21 @@ local function on_built_entity(event)
     then
       local signalID = {type = "virtual", name = "stl-priority"}
       game.print(station.backer_name)
-      game.print(station.get_merged_signal(signalID))
-      game.print(serpent.line(station.get_control_behavior().trains_count_signal))
-      game.print(serpent.line(station.get_control_behavior().stopped_train_signal))
-      game.print(serpent.line(station.get_merged_signals()))
+      -- game.print(station.get_merged_signal(signalID))
+      -- game.print(serpent.line(station.get_control_behavior().trains_count_signal))
+      -- game.print(serpent.line(station.get_control_behavior().stopped_train_signal))
+      -- game.print(serpent.line(station.get_merged_signals()))
+      local trains = station.get_train_stop_trains()
+      local occupied = false
+      for _,train in pairs(trains)
+      do
+        if train.schedule.records[train.schedule.current].temporary and train.schedule.records[train.schedule.current].rail == station.connected_rail
+        then
+          occupied = true
+          break
+        end
+      end
+
       break
     end
   end
