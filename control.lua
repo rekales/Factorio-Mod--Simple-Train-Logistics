@@ -53,7 +53,7 @@ end
 
 local function mainLoopThing(event)
 
-  if (event.tick % 60 == 0)
+  if (event.tick % 300 == 0)
   then
     -- game.print("event: changed ammo")
     local forces = game.forces
@@ -165,6 +165,17 @@ end
 
 -- end
 
+local function on_train_changed_state(event)
+  if event.train.state == defines.train_state.wait_station and event.train.station and event.train.station.get_merged_signal(RESET_SCHEDULE_SIGNAL_ID) > 0
+  then
+    local schedule = event.train.schedule
+    schedule.records = {schedule.records[schedule.current]}
+    schedule.current = 1
+    event.train.schedule = schedule
+  end
+end
+
 
 script.on_event(defines.events.on_tick, mainLoopThing)
+script.on_event(defines.events.on_train_changed_state, on_train_changed_state)
 -- script.on_event(defines.events.on_built_entity, on_built_entity)
